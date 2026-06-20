@@ -52,5 +52,8 @@ backend/docker/data/
 .vscode/
 *.swp
 
+# ---- Generated Xcode project (regenerate with `xcodegen generate`) ----
+ios/ClockworkApp/Clockwork.xcodeproj/
+
 # ---- Claude Code (machine-local) ----
 .claude/settings.local.json
