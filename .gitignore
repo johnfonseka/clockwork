@@ -1,0 +1,56 @@
+# ---- macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# ---- Xcode / Swift ----
+## Build generated
+ios/build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+## User settings
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+## Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+## Various
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ---- PHP / Composer ----
+backend/vendor/
+composer.phar
+*.log
+
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.mobileprovision
+
+# ---- Docker ----
+backend/docker/data/
+
+# ---- Editor ----
+.idea/
+.vscode/
+*.swp
+
+# ---- Claude Code (machine-local) ----
+.claude/settings.local.json
