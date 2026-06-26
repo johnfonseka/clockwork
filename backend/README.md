@@ -45,6 +45,18 @@ composer serve                # php -S 0.0.0.0:8080 -t public
 
 (The database will report `error` until a MariaDB instance is reachable.)
 
+### Tests
+
+```sh
+composer test                 # or: ./vendor/bin/phpunit
+```
+
+Pure unit tests (no database) cover the sync helpers — payload validation
+(`SyncValidator`), timestamp normalisation (`Timestamps`), record/row conversion
+(`RowNormaliser`) — and Sign in with Apple verification (`AppleTokenVerifier`,
+exercised with a locally generated RSA key, no network). DB-backed end-to-end
+tests for the full `SyncEngine` path are planned.
+
 ## Endpoints
 
 | Method | Path          | Description |

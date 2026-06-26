@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
+// The backend operates entirely in UTC.
+date_default_timezone_set('UTC');
+
 use Clockwork\Config;
 use Clockwork\Controllers\AuthController;
 use Clockwork\Controllers\HealthController;

@@ -33,6 +33,7 @@ Package.resolved
 
 # ---- PHP / Composer ----
 backend/vendor/
+backend/.phpunit.cache/
 composer.phar
 *.log
 
