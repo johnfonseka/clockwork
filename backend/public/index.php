@@ -7,6 +7,7 @@ require __DIR__ . '/../vendor/autoload.php';
 use Clockwork\Config;
 use Clockwork\Controllers\AuthController;
 use Clockwork\Controllers\HealthController;
+use Clockwork\Controllers\SyncController;
 use Clockwork\Http\Json;
 use Clockwork\Http\Router;
 
@@ -21,6 +22,7 @@ set_error_handler(static function (int $severity, string $message, string $file,
 $router = new Router();
 $router->get('/api/health', [new HealthController(), 'show']);
 $router->post('/api/auth', [new AuthController(), 'authenticate']);
+$router->post('/api/sync', [new SyncController(), 'sync']);
 
 try {
     $router->dispatch(

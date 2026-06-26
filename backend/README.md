@@ -51,14 +51,52 @@ composer serve                # php -S 0.0.0.0:8080 -t public
 |--------|---------------|-------------|
 | `GET`  | `/api/health` | Liveness + DB connectivity. `200` if DB reachable, else `503`. |
 | `POST` | `/api/auth`   | Verify a Sign in with Apple identity token, upsert the user, return the record. |
+| `POST` | `/api/sync`   | Last-write-wins delta sync (spec §5). |
 
-**`POST /api/auth`** accepts the token as `Authorization: Bearer <token>` or a
-JSON body `{ "identity_token": "<token>" }`. It verifies the JWT signature
-against Apple's public keys and checks `iss` and `aud` (`aud` must equal
-`APPLE_CLIENT_ID`). Responses: `200` `{ "user": {...} }`, `400` missing token,
-`401` invalid token.
+### Authentication
 
-## Phase 1 scope
+Both `/api/auth` and `/api/sync` authenticate the caller. `/api/auth` accepts the
+token as `Authorization: Bearer <token>` or a JSON body
+`{ "identity_token": "<token>" }`; it verifies the JWT signature against Apple's
+public keys and checks `iss` and `aud` (`aud` must equal `APPLE_CLIENT_ID`).
 
-Done: Docker environment, MariaDB schema, Sign in with Apple token verification,
-health check. The `/api/sync` delta-sync endpoint (spec §5) is Phase 4.
+**Dev bypass:** when `APP_ENV=development`, requests may send
+`X-Dev-User: <any-id>` instead of a real Apple token. The id is treated as an
+`apple_user_id` (created on first use), so the API can be exercised — and the app
+developed — without a live Apple token. This header is ignored in production.
+
+### `POST /api/sync`
+
+```jsonc
+// request
+{
+  "last_sync_timestamp": "2026-06-26 08:00:00",   // or null on first sync
+  "mutations": {
+    "habits":        [ /* full records, client UUID `id` */ ],
+    "daily_logs":    [ /* keyed by (user_id, log_date) */ ],
+    "habit_entries": [ /* full records, client UUID `id` */ ]
+  }
+}
+// response
+{
+  "server_timestamp": "2026-06-26 12:58:51",       // use as next last_sync_timestamp
+  "changes": { "habits": [...], "daily_logs": [...], "habit_entries": [...] }
+}
+```
+
+- `user_id` is taken from the authenticated session, never the payload.
+- Each record must carry an `updated_at`; a mutation is applied only when its
+  `updated_at` is `>=` the stored row's (last-write-wins).
+- `changes` returns rows updated after `last_sync_timestamp`, excluding ones
+  written by this same payload. Booleans/ints are normalised and
+  `checklist_state` is returned as decoded JSON. Responses: `200`, `401`
+  unauthenticated, `422` invalid payload.
+- `habit_checklists` is not synced (the checklist definition travels with its
+  habit). `users`/`daily_logs` use server `INT` ids; `habits`/`habit_entries`
+  use client-generated UUIDs.
+
+## Status
+
+Backend complete end-to-end: Docker environment, MariaDB schema, Sign in with
+Apple verification, health check, and the `/api/sync` delta-sync engine — all
+verified against a live MariaDB (LWW conflicts, per-user isolation, validation).
