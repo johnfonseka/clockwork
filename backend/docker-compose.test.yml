@@ -1,0 +1,47 @@
+# Ephemeral stack for local end-to-end API tests.
+#
+# A dedicated `clockwork_test` database on tmpfs (so the schema is reloaded fresh
+# on every start) and a test API instance — both on separate ports from the dev
+# stack, so `docker compose up` (8080/clockwork) is never touched.
+#
+# Driven by scripts/run-e2e.sh (`composer test:e2e`), not meant to be run by hand.
+services:
+  db-test:
+    image: mariadb:11
+    environment:
+      MARIADB_DATABASE: clockwork_test
+      MARIADB_USER: clockwork
+      MARIADB_PASSWORD: test
+      MARIADB_ROOT_PASSWORD: roottest
+    tmpfs:
+      - /var/lib/mysql
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  api-test:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    depends_on:
+      db-test:
+        condition: service_healthy
+    environment:
+      APP_ENV: development
+      DB_HOST: db-test
+      DB_PORT: 3306
+      DB_NAME: clockwork_test
+      DB_USER: clockwork
+      DB_PASSWORD: test
+      APPLE_CLIENT_ID: com.example.clockwork
+    ports:
+      - "8081:80"
+    volumes:
+      - ./:/var/www/html
+      - /var/www/html/vendor

@@ -48,14 +48,24 @@ composer serve                # php -S 0.0.0.0:8080 -t public
 ### Tests
 
 ```sh
-composer test                 # or: ./vendor/bin/phpunit
+composer test                 # fast unit suite (no database)
+composer test:e2e             # end-to-end API tests (needs Docker)
 ```
 
-Pure unit tests (no database) cover the sync helpers — payload validation
-(`SyncValidator`), timestamp normalisation (`Timestamps`), record/row conversion
-(`RowNormaliser`) — and Sign in with Apple verification (`AppleTokenVerifier`,
-exercised with a locally generated RSA key, no network). DB-backed end-to-end
-tests for the full `SyncEngine` path are planned.
+**Unit tests** (`tests/Unit`, no database) cover the sync helpers — payload
+validation (`SyncValidator`), timestamp normalisation (`Timestamps`), record/row
+conversion (`RowNormaliser`) — and Sign in with Apple verification
+(`AppleTokenVerifier`, exercised with a locally generated RSA key, no network).
+
+**End-to-end tests** (`tests/E2E`) exercise the real HTTP API against a live
+MariaDB. `composer test:e2e` (via `scripts/run-e2e.sh`) spins up an **ephemeral
+stack** from `docker-compose.test.yml` — a dedicated `clockwork_test` database on
+tmpfs (fresh schema each run) and a test API on port `8081` — runs the suite,
+then tears it down with `docker compose down -v`. The dev stack (`8080` /
+`clockwork`) is never touched, and each test truncates tables for a clean,
+deterministic start. Tests authenticate via the `X-Dev-User` bypass, so no Apple
+token is needed. CI wiring (GitHub Actions) is a later step; the same suite will
+run there unchanged.
 
 ## Endpoints
 
