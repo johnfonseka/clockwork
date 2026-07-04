@@ -1,6 +1,7 @@
 services:
   db:
     image: mariadb:11
+    container_name: clockwork-db
     restart: unless-stopped
     environment:
       MARIADB_DATABASE: ${DB_NAME}
@@ -11,18 +12,20 @@ services:
       - db_data:/var/lib/mysql
       # Loaded only on first init of an empty data volume.
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-    ports:
-      - "${DB_PORT:-3306}:3306"
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
       timeout: 5s
       retries: 12
+    # DB stays on the private network only — never exposed to the proxy or host.
+    networks:
+      - internal
 
-  api:
+  clockwork-api:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
+    container_name: clockwork-api
     restart: unless-stopped
     depends_on:
       db:
@@ -35,12 +38,21 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
-    ports:
-      - "${API_PORT:-8080}:80"
     volumes:
-      # Live-mount source for dev; keep the image's vendor/ via anonymous volume.
+      # Live-mount source; keep the image's vendor/ via anonymous volume.
       - ./:/var/www/html
       - /var/www/html/vendor
+    # On `internal` to reach the DB; on `web-proxy-network` so the shared nginx
+    # proxy can route to this container (by name `clockwork-api`, port 80).
+    networks:
+      - internal
+      - web-proxy-network
 
 volumes:
   db_data:
+
+networks:
+  internal:
+    external: false
+  web-proxy-network:
+    external: true
