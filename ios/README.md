@@ -22,3 +22,14 @@ execution. See [`../clockwork-spec.md`](../clockwork-spec.md) for the full spec.
 
 Sign in with Apple and provisioning must be configured in Xcode's
 **Signing & Capabilities** panel with your Apple Developer account.
+
+## TODO: API environment switch
+
+The app needs a way to switch its API base URL between the **test** and **prod**
+backend tiers without editing code:
+
+- Test: `https://test-api-clockwork.shan4max.com`
+- Prod: `https://api-clockwork.shan4max.com`
+
+Pick a mechanism — e.g. a build configuration / scheme with an `.xcconfig` value,
+or an in-app developer toggle — and wire the sync worker to read from it.
