@@ -5,8 +5,17 @@
 # stack, so `docker compose up` (8080/clockwork) is never touched.
 #
 # Driven by scripts/run-e2e.sh (`composer test:e2e`), not meant to be run by hand.
+#
+# DELIBERATELY DIVERGES from docker-compose.yml (which is proxy-oriented):
+#   * Keeps published host ports — the e2e runner hits the API over HTTP on
+#     :8081 and connects to the DB on :3307. Do not remove these.
+#   * Stays OFF `web-proxy-network` — this stack is ephemeral and isolated; nginx
+#     must never route to it.
+#   * No fixed `container_name` — run under project `-p clockwork-e2e`, so names
+#     stay unique and it can run alongside the dev stack.
+# Service names mirror the prod `clockwork-*` convention, with a `-test` suffix.
 services:
-  db-test:
+  clockwork-db-test:
     image: mariadb:11
     environment:
       MARIADB_DATABASE: clockwork_test
@@ -25,16 +34,16 @@ services:
       timeout: 5s
       retries: 20
 
-  api-test:
+  clockwork-api-test:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
     depends_on:
-      db-test:
+      clockwork-db-test:
         condition: service_healthy
     environment:
       APP_ENV: development
-      DB_HOST: db-test
+      DB_HOST: clockwork-db-test
       DB_PORT: 3306
       DB_NAME: clockwork_test
       DB_USER: clockwork
@@ -43,5 +52,6 @@ services:
     ports:
       - "8081:80"
     volumes:
+      # Live-mount source; keep the image's vendor/ via anonymous volume.
       - ./:/var/www/html
       - /var/www/html/vendor

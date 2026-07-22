@@ -22,6 +22,10 @@ public enum ScoringConstants {
     /// The window over which the remaining Show-Up Bonus credit decays to zero.
     public static let showUpVarianceWindowMinutes = 120.0
 
+    /// Chained (CHN) decay per minute the actual parent→child gap overshoots the
+    /// target gap. Mirrors the flexible curve (spec §1 "Chained Habits"); tunable.
+    public static let chainedDecayPerMinute = 0.55
+
     /// Total minutes in a day, used to normalise variance across midnight.
     public static let minutesInDay = 1440
 }

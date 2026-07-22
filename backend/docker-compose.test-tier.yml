@@ -1,0 +1,82 @@
+# Deployed TEST / STAGING tier  ->  https://test-api-clockwork.shan4max.com
+#
+# Sibling of the prod docker-compose.yml: behind the shared nginx proxy on
+# web-proxy-network, DB private on an internal network. Differences are the
+# test-tier values:
+#   * its own `clockwork_test` database on a PERSISTENT volume (survives restarts)
+#   * container names suffixed `-test` so it runs alongside prod on one host
+#   * APP_ENV=development on purpose — the X-Dev-User bypass stays ON for the test
+#     tier so the app/API can be exercised without a real Apple token.
+#     (NEVER do this on prod — api-clockwork must be APP_ENV=production.)
+#
+# This is NOT docker-compose.test.yml — that is the local ephemeral e2e stack
+# (`composer test:e2e`): tmpfs DB, published ports, off-proxy. Don't deploy that.
+#
+# nginx routes test-api-clockwork.shan4max.com -> http://clockwork-api-test:80
+# over web-proxy-network (the container name is the upstream host).
+#
+# Bring up on the server (from backend/):
+#   docker compose -f docker-compose.test-tier.yml up -d --build
+# Secrets (DB_* passwords, APPLE_CLIENT_ID) are read from .env; use a separate
+# env file with `--env-file .env.test` if you want distinct test credentials.
+name: clockwork-test
+
+services:
+  clockwork-db-test:
+    image: mariadb:11
+    container_name: clockwork-db-test
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: clockwork_test
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data_test:/var/lib/mysql
+      # Loaded only on first init of an empty data volume.
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    # DB stays on the private network only — never exposed to the proxy or host.
+    networks:
+      - internal
+
+  clockwork-api-test:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: clockwork-api-test
+    restart: unless-stopped
+    depends_on:
+      clockwork-db-test:
+        condition: service_healthy
+    environment:
+      # Test tier intentionally runs in development (X-Dev-User bypass on).
+      APP_ENV: development
+      DB_HOST: clockwork-db-test
+      DB_PORT: 3306
+      DB_NAME: clockwork_test
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
+    volumes:
+      # Live-mount source; keep the image's vendor/ via anonymous volume.
+      - ./:/var/www/html
+      - /var/www/html/vendor
+    # On `internal` to reach the DB; on `web-proxy-network` so the shared nginx
+    # proxy can route to this container (by name `clockwork-api-test`, port 80).
+    networks:
+      - internal
+      - web-proxy-network
+
+volumes:
+  db_data_test:
+
+networks:
+  internal:
+    external: false
+  web-proxy-network:
+    external: true

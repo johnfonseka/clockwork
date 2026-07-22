@@ -62,6 +62,33 @@ final class SyncE2ETest extends E2ETestCase
         $this->assertSame(['a' => true, 'b' => false], $changes['habit_entries'][0]['checklist_state']);
     }
 
+    public function test_chained_habit_columns_round_trip(): void
+    {
+        $childId = '33333333-3333-3333-3333-333333333333';
+        $push = $this->post('/api/sync', [
+            'last_sync_timestamp' => null,
+            'mutations' => ['habits' => [[
+                'id' => $childId,
+                'name' => 'Morning Workout', 'category' => 'health', 'strictness_type' => 'chained',
+                'chain_parent_id' => self::HABIT_ID, 'chain_target_gap_minutes' => 15,
+                'schedule_type' => 'weekly', 'schedule_value' => '1,2,3,4,5,6,7',
+                'target_start_time' => '06:45:00', 'target_duration_minutes' => 45,
+                'updated_at' => '2026-06-26 08:00:00',
+            ]]],
+        ], $this->devUser('carol'));
+        $this->assertSame(200, $push['status']);
+
+        $pull = $this->post('/api/sync', [
+            'last_sync_timestamp' => '2026-06-26 00:00:00',
+            'mutations' => [],
+        ], $this->devUser('carol'));
+
+        $habit = $pull['json']['changes']['habits'][0];
+        $this->assertSame('chained', $habit['strictness_type']);
+        $this->assertSame(self::HABIT_ID, $habit['chain_parent_id']);
+        $this->assertSame(15, $habit['chain_target_gap_minutes']); // normalised to int
+    }
+
     public function test_last_write_wins(): void
     {
         $this->post('/api/sync', $this->fullPayload(), $this->devUser('alice'));

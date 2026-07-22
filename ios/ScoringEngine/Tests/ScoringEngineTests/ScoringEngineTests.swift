@@ -111,6 +111,115 @@ struct ShowUpBonusTests {
     }
 }
 
+// MARK: - Chained (CHN)
+
+@Suite("Chained (CHN) scoring")
+struct ChainedTests {
+    // Parent finishes at 07:00 (420); target gap 15 min → ideal child start 07:15.
+    private let parentFinish = 7 * 60      // 420
+    private let targetGap = 15
+
+    @Test("Within the target gap scores 100", arguments: [
+        7 * 60 + 5,    // 5-min gap  (under target)
+        7 * 60 + 15,   // 15-min gap (exactly target)
+    ])
+    func withinGap(childStart: Int) {
+        let score = ScoringEngine.scoreChained(
+            parentFinishMinutes: parentFinish,
+            childStartMinutes: childStart,
+            targetGapMinutes: targetGap,
+            completed: true
+        )
+        #expect(score == 100)
+    }
+
+    @Test("Starting before the parent finishes still scores 100 (prompt)")
+    func negativeGap() {
+        let score = ScoringEngine.scoreChained(
+            parentFinishMinutes: parentFinish,
+            childStartMinutes: parentFinish - 10,
+            targetGapMinutes: targetGap,
+            completed: true
+        )
+        #expect(score == 100)
+    }
+
+    @Test("Overshooting the target gap decays at 0.55/min", arguments: [
+        (7 * 60 + 45, 83.5),    // 45-min gap → 30 over → 100 - 30*0.55
+        (7 * 60 + 100, 53.25),  // 100-min gap → 85 over → 100 - 85*0.55
+    ])
+    func overshootDecays(childStart: Int, expected: Double) {
+        let score = ScoringEngine.scoreChained(
+            parentFinishMinutes: parentFinish,
+            childStartMinutes: childStart,
+            targetGapMinutes: targetGap,
+            completed: true
+        )
+        #expect(isClose(score, expected, tol: 0.1))
+    }
+
+    @Test("Far overshoot clamps to 0")
+    func farOvershootClamps() {
+        let score = ScoringEngine.scoreChained(
+            parentFinishMinutes: parentFinish,
+            childStartMinutes: parentFinish + 500,
+            targetGapMinutes: targetGap,
+            completed: true
+        )
+        #expect(score == 0)
+    }
+
+    @Test("Gap normalises across midnight (parent 23:50, child 00:10 → 20-min gap)")
+    func gapWrapsMidnight() {
+        let parent = 23 * 60 + 50   // 1430
+        let child = 10              // 00:10
+        // 20-min gap, target 15 → 5 over → 100 - 5*0.55 = 97.25
+        let score = ScoringEngine.scoreChained(
+            parentFinishMinutes: parent,
+            childStartMinutes: child,
+            targetGapMinutes: 15,
+            completed: true
+        )
+        #expect(isClose(score, 97.25, tol: 0.1))
+    }
+
+    @Test("Parent Grace: no parent entry → completed child gets the baseline")
+    func parentGraceCompleted() {
+        let score = ScoringEngine.scoreChained(
+            parentFinishMinutes: nil,
+            childStartMinutes: 7 * 60 + 15,
+            targetGapMinutes: targetGap,
+            completed: true
+        )
+        #expect(score == 50)
+    }
+
+    @Test("Parent Grace: no parent entry → uncompleted child scores 0")
+    func parentGraceNotCompleted() {
+        let score = ScoringEngine.scoreChained(
+            parentFinishMinutes: nil,
+            childStartMinutes: nil,
+            targetGapMinutes: targetGap,
+            completed: false
+        )
+        #expect(score == 0)
+    }
+
+    @Test("Child never clocked in → completion baseline, else 0")
+    func childNoClockIn() {
+        #expect(ScoringEngine.scoreChained(parentFinishMinutes: parentFinish, childStartMinutes: nil, targetGapMinutes: targetGap, completed: true) == 50)
+        #expect(ScoringEngine.scoreChained(parentFinishMinutes: parentFinish, childStartMinutes: nil, targetGapMinutes: targetGap, completed: false) == 0)
+    }
+
+    @Test("Clock-based score(...) falls back to the Parent-Grace baseline for chained")
+    func clockScoreFallsBack() {
+        // completed → baseline; not completed → 0, regardless of variance/time.
+        #expect(ScoringEngine.score(strictness: .chained, varianceMinutes: 0, completed: true) == 50)
+        #expect(ScoringEngine.score(strictness: .chained, varianceMinutes: 0, completed: false) == 0)
+        #expect(ScoringEngine.score(strictness: .chained, targetMinutes: 420, actualMinutes: nil, completed: true) == 50)
+    }
+}
+
 // MARK: - Missing clock-in (nil actual)
 
 @Suite("No clock-in recorded")

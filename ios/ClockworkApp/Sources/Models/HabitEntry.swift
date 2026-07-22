@@ -48,11 +48,46 @@ final class HabitEntry {
     /// Returns 0 if the entry is orphaned from its habit.
     var score: Double {
         guard let habit else { return 0 }
+        if habit.strictness == .chained {
+            return ScoringEngine.scoreChained(
+                parentFinishMinutes: parentFinishMinutes(for: habit),
+                childStartMinutes: actualStartMinutes,
+                targetGapMinutes: habit.chainTargetGapMinutes ?? 0,
+                completed: completed
+            )
+        }
         return ScoringEngine.score(
             strictness: habit.strictness,
             targetMinutes: habit.targetStartMinutes,
             actualMinutes: actualStartMinutes,
             completed: completed
         )
+    }
+
+    /// Resolves the finish time (start + duration, minutes since midnight) of the
+    /// parent habit's entry for this same day, or `nil` if the chain has no parent,
+    /// the parent has no entry today, or the parent is not completed — each of
+    /// which triggers the Parent Grace Rule (spec §1).
+    private func parentFinishMinutes(for habit: Habit) -> Int? {
+        guard
+            let parentId = habit.chainParentId,
+            let context = modelContext
+        else { return nil }
+
+        let calendar = Calendar.current
+        let day = logDate
+        let entries = (try? context.fetch(FetchDescriptor<HabitEntry>())) ?? []
+        let parentEntry = entries.first {
+            $0.habit?.id == parentId && calendar.isDate($0.logDate, inSameDayAs: day)
+        }
+
+        guard
+            let parentEntry,
+            parentEntry.completed,
+            let start = parentEntry.actualStartMinutes,
+            let duration = parentEntry.actualDurationMinutes
+        else { return nil }
+
+        return start + duration
     }
 }

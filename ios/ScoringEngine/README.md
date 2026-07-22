@@ -38,6 +38,14 @@ ScoringEngine.aggregate([(100, false), (0, true), (50, false)]) // 75
 A missing clock-in scores 0 for Strict/Flexible; a completed Show-Up Bonus with no
 recorded time earns the 50% baseline. Variance is normalised across midnight.
 
+### Chained (CHN) — planned, not yet implemented
+
+A fourth scoring mode is specified but **not built here yet** (roadmap Phase 5). It
+ignores the clock and scores the *gap to a parent (anchor) habit*: `100%` when the
+actual gap is ≤ the target gap, else `100 − (gap − target)·0.55`. The **Parent Grace
+Rule** detaches a child (falling back to the Show-Up 50% baseline) when the parent has
+no entry for the day or is not completed. Full definition: `../../clockwork-spec.md` §1.
+
 ## Running tests
 
 ```sh

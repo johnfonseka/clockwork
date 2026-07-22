@@ -21,7 +21,8 @@ final class SyncSchema
         'habits' => [
             'key' => ['id'],
             'columns' => [
-                'id', 'name', 'category', 'strictness_type', 'schedule_type',
+                'id', 'name', 'category', 'strictness_type',
+                'chain_parent_id', 'chain_target_gap_minutes', 'schedule_type',
                 'schedule_value', 'target_start_time', 'target_duration_minutes',
                 'has_checklist', 'is_active', 'updated_at',
             ],
@@ -31,7 +32,7 @@ final class SyncSchema
             ],
             'defaults' => ['has_checklist' => 0, 'is_active' => 1],
             'bools' => ['has_checklist', 'is_active'],
-            'ints' => ['target_duration_minutes'],
+            'ints' => ['target_duration_minutes', 'chain_target_gap_minutes'],
             'json' => [],
         ],
         'daily_logs' => [
