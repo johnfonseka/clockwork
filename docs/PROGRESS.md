@@ -54,8 +54,8 @@ separately, so this is UI/preset work, no migration.
 - [ ] Update onboarding presets to express strictness explicitly (not implied by ring)
 
 **Chained (CHN) scoring mode**
-- [ ] Additive migration: `'chained'` enum value + `chain_parent_id` + `chain_target_gap_minutes` (soft ref, **no** SQL FK)
-- [ ] Extend `SyncSchema` (PHP) to carry the two new columns
+- [x] Additive migration: `'chained'` enum value + `chain_parent_id` + `chain_target_gap_minutes` (soft ref, **no** SQL FK)
+- [x] Extend `SyncSchema` (PHP) to carry the two new columns (`composer test` 29 ✓, `composer test:e2e` 9 ✓)
 - [x] `ScoringEngine`: gap-based score (`100%` at/under target gap, flexible decay beyond)
 - [x] `ScoringEngine`: Parent Grace Rule (parent missing/incomplete → child detaches to Show-Up baseline) + `.chained` enum case
 - [ ] `Habit` SwiftData model: `chainParentId`, `chainTargetGapMinutes`, `.chained` case

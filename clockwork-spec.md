@@ -88,7 +88,7 @@ CREATE TABLE habits (
   user_id INT NOT NULL,
   name VARCHAR(255) NOT NULL,
   category ENUM('base', 'health', 'growth', 'spirit') NOT NULL,  -- visual grouping only; does NOT dictate scoring
-  strictness_type ENUM('strict', 'flexible', 'show_up_bonus', 'chained') NOT NULL DEFAULT 'strict',
+  strictness_type ENUM('strict', 'flexible', 'show_up_bonus', 'chained') DEFAULT 'strict',
   chain_parent_id VARCHAR(36) NULL,         -- CHN: self-reference to the anchor habit; soft ref, NO foreign key (see §5)
   chain_target_gap_minutes INT NULL,        -- CHN: desired minutes between the parent finishing and this habit starting
   schedule_type ENUM('weekly', 'monthly_relative', 'monthly_absolute') NOT NULL,
