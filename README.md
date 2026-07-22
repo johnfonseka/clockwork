@@ -6,7 +6,8 @@ time you act) rather than binary streaks.
 
 See [`clockwork-spec.md`](./clockwork-spec.md) for the authoritative project
 specification — it is the source of truth for the data model, scoring engine, and
-UI design.
+UI design. For live status and the ticked action-item list, see
+[`docs/PROGRESS.md`](./docs/PROGRESS.md).
 
 ## Architecture
 
@@ -40,3 +41,8 @@ clockwork/
 2. **Models & Onboarding** — SwiftData entities + starter-habit presets.
 3. **Dashboard** — 4-ring SwiftUI dashboard + checklist component.
 4. **Sync & Math** — background delta sync + pause-day exclusion in metrics.
+5. **Master-spec reconciliation** — decouple ring (grouping) from strictness (scoring); add the **Chained (CHN)** scoring mode with the Parent Grace Rule; client backlog (Siri logging, retrospective ± editing, Reset-to-Target macro, home-screen widget).
+
+> The four rings (Base / Health / Growth / Spirit) are **visual categories**, not
+> scoring rules — each habit's scoring mode (Strict / Flexible / Show-Up Bonus /
+> Chained) is chosen independently. See [`clockwork-spec.md`](./clockwork-spec.md) §1.

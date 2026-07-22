@@ -36,13 +36,19 @@ Or press Run ▶ in Xcode against a simulator.
   `HabitChecklistItem`, `DailyLog`, `HabitEntry`. Enum columns are stored as raw
   strings (matching the DB ENUMs) with typed computed accessors.
 - **`Sources/Onboarding/HabitPresets.swift`** — seeds the Foundations and
-  Maintenance presets on first launch (spec §4).
+  Maintenance presets on first launch (spec §4). Phase 5 adds a Momentum preset
+  (a Chained habit) demonstrating that ring and strictness are independent.
 - **`Sources/App/ClockworkApp.swift`** — app entry; configures the
   `ModelContainer` and seeds presets.
 - **`Sources/Views/ContentView.swift`** — Phase 2 shell listing seeded habits.
   `HabitEntry.score` demonstrates the ScoringEngine integration.
 
 The full terminal-aesthetic 4-ring dashboard is Phase 3.
+
+**Phase 5 (planned):** the `Habit` model gains `chainParentId` /
+`chainTargetGapMinutes` and a `chained` strictness case, and the habit editor lets
+the user choose any strictness independently of the ring (category). No changes to
+the committed models/schema yet — see `../../clockwork-spec.md` §1 + roadmap.
 
 > Signing & Sign in with Apple are configured manually in Xcode's
 > **Signing & Capabilities** with your Apple Developer account.

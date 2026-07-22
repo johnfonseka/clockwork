@@ -3,9 +3,10 @@
 > Living document to resume work with full context. Covers **scope**, **current
 > state**, **infrastructure**, **open items**, and **what's planned next**.
 > Update it as things change. `clockwork-spec.md` remains the authoritative spec;
-> this file tracks *where we are* against it.
+> this file tracks *where we are* against it. For the tick-as-you-go action-item
+> checklist, see [`PROGRESS.md`](./PROGRESS.md).
 >
-> Last updated: 2026-07-04
+> Last updated: 2026-07-22
 
 ---
 
@@ -16,13 +17,21 @@ structured daily routine by **temporal precision** (how close to your target tim
 you act) rather than binary streaks. Habits live in **4 concentric rings**, in a
 strict monospaced terminal aesthetic (`CCW_OS`, ASCII borders, `[ RUN_CLOCK_IN ]`).
 
-- **Base** — Strict decay (~30-min window). Early grace = 40 min flat.
-- **Health** — Show-Up Bonus (needs `completed`; 50% baseline + 50% over 120 min).
-- **Growth / Spirit** — Flexible (~180-min window); any early clock-in = 100%.
+The **4 rings** — Base / Health / Growth / Spirit — are **visual categories**
+(grouping + accent color) and do **not** dictate scoring. Each habit's scoring mode
+(*strictness type*) is chosen independently:
+
+- **Strict** — tight decay (~30-min window). Early grace = 40 min flat.
+- **Show-Up Bonus** — needs `completed`; 50% baseline + 50% over a 120-min window.
+- **Flexible** — broad (~180-min window); any early clock-in = 100%.
+- **Chained (CHN)** — *specified, not yet built.* Scored on the gap to a parent
+  anchor habit, ignoring the clock; **Parent Grace Rule** detaches a child (to a
+  Show-Up baseline) if the parent is missed. See `clockwork-spec.md` §1 + Phase 5.
 - **Pause Engine** — `is_paused` days are fully excluded from trends/aggregates.
 
-Scoring rules are the source of truth in `clockwork-spec.md` §1 and are mirrored
-exactly by the Swift `ScoringEngine`.
+Scoring rules are the source of truth in `clockwork-spec.md` §1. The Swift
+`ScoringEngine` mirrors the first three modes exactly; the Chained mode and the
+ring/strictness decoupling are **planned (Phase 5)**, not yet in code.
 
 ## 2. Architecture
 
@@ -142,6 +151,18 @@ Self-hosted on a home server behind a shared **nginx reverse proxy** on an
      containers) — likely deploy to **test tier first**, then promote to prod.
    - Fold in the **close-the-bypass** step: prod deploy sets `APP_ENV=production`.
 3. **Close the prod auth bypass** (item 6.1) — natural to land with the CD pipeline.
+4. **Phase 5 — Master-spec reconciliation** (new, agreed 2026-07-22). Reconciles the
+   codebase with the plain-English master spec
+   (`clockwork_plain-english_product_specification.pdf`). Two architecture changes:
+   - **Decouple ring from strictness** — `category` is grouping only; the habit editor
+     picks any `strictness_type` per habit. The schema already stores them separately,
+     so this is a UI/preset change, no migration.
+   - **Add the Chained (CHN) scoring mode** — additive migration for `chain_parent_id`
+     + `chain_target_gap_minutes` and the `'chained'` enum value; extend `SyncSchema`;
+     implement gap scoring + Parent Grace in `ScoringEngine`. `chain_parent_id` is a
+     **soft reference** (no SQL FK) to keep sync batches order-independent.
+   - **Client backlog** (also from the master spec): Siri voice logging, retrospective
+     `[-]`/`[+]` 5-min editing, Reset-to-Target macro, single-focus home-screen widget.
 
 ## 8. Handy commands
 
