@@ -50,16 +50,16 @@
 
 **Decouple ring (grouping) from strictness (scoring)** — schema already stores them
 separately, so this is UI/preset work, no migration.
-- [ ] Habit editor lets the user pick any `strictness_type` per habit, independent of ring
-- [ ] Update onboarding presets to express strictness explicitly (not implied by ring)
+- [ ] Habit editor lets the user pick any `strictness_type` per habit, independent of ring ⚠ *no habit create/edit UI exists yet — nothing to change until one is built*
+- [x] Onboarding presets express strictness explicitly (not implied by ring); Momentum preset concretely demonstrates a Health-ring habit scored as Chained
 
 **Chained (CHN) scoring mode**
 - [x] Additive migration: `'chained'` enum value + `chain_parent_id` + `chain_target_gap_minutes` (soft ref, **no** SQL FK)
 - [x] Extend `SyncSchema` (PHP) to carry the two new columns (`composer test` 29 ✓, `composer test:e2e` 9 ✓)
 - [x] `ScoringEngine`: gap-based score (`100%` at/under target gap, flexible decay beyond)
 - [x] `ScoringEngine`: Parent Grace Rule (parent missing/incomplete → child detaches to Show-Up baseline) + `.chained` enum case
-- [ ] `Habit` SwiftData model: `chainParentId`, `chainTargetGapMinutes`, `.chained` case
-- [ ] Momentum preset (Chained "Morning Workout" anchored to "Wake Up", 15-min gap)
+- [x] `Habit` SwiftData model: `chainParentId`, `chainTargetGapMinutes`, `.chained` case; `HabitEntry.score` resolves the parent entry + Parent Grace (app builds ✓)
+- [x] Momentum preset (Chained "Morning Workout" anchored to "Wake Up", 15-min gap)
 - [x] Tests for gap scoring + Parent Grace (`swift test` — 33 passing)
 
 **Client backlog (from the master spec — lower priority)**

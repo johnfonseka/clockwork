@@ -12,10 +12,15 @@ enum HabitPresets {
         let existing = (try? context.fetchCount(FetchDescriptor<Habit>())) ?? 0
         guard existing == 0 else { return }
 
-        for habit in foundations() {
+        let foundationHabits = foundations()
+        for habit in foundationHabits {
             context.insert(habit)
         }
         context.insert(maintenance())
+        // Momentum is chained to the Wake Up anchor, so it needs that habit's id.
+        if let wakeUp = foundationHabits.first(where: { $0.name == "Wake Up" }) {
+            context.insert(momentum(anchoredTo: wakeUp))
+        }
 
         try? context.save()
     }
@@ -42,6 +47,23 @@ enum HabitPresets {
                 targetDurationMinutes: 30
             ),
         ]
+    }
+
+    /// "The Momentum Preset": a Morning Workout in the Health ring but scored as
+    /// Chained — anchored to Wake Up with a 15-minute target gap. Demonstrates that
+    /// ring (grouping) and strictness (scoring) are independent (spec §4).
+    static func momentum(anchoredTo anchor: Habit) -> Habit {
+        Habit(
+            name: "Morning Workout",
+            category: .health,
+            strictness: .chained,
+            chainParentId: anchor.id,
+            chainTargetGapMinutes: 15,
+            scheduleType: .weekly,
+            scheduleValue: everyDay,
+            targetStartMinutes: 6 * 60 + 45,       // 06:45 (display/ordering only)
+            targetDurationMinutes: 45
+        )
     }
 
     /// "The Maintenance Preset": a monthly checklist-driven block on the last

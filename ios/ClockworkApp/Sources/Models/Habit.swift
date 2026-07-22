@@ -13,6 +13,12 @@ final class Habit {
     var name: String
     var categoryRaw: String
     var strictnessRaw: String
+    /// CHN: the anchor habit's `id` this habit is chained to, or `nil` if not
+    /// chained. A soft reference (no relationship/FK); a dangling id reads as
+    /// "detached" via the Parent Grace Rule (spec §1).
+    var chainParentId: String?
+    /// CHN: desired minutes between the parent finishing and this habit starting.
+    var chainTargetGapMinutes: Int?
     var scheduleTypeRaw: String
     var scheduleValue: String
     /// Target start time as minutes since midnight (maps to the DB `TIME` column).
@@ -33,6 +39,8 @@ final class Habit {
         name: String,
         category: HabitCategory,
         strictness: Strictness,
+        chainParentId: String? = nil,
+        chainTargetGapMinutes: Int? = nil,
         scheduleType: ScheduleType,
         scheduleValue: String,
         targetStartMinutes: Int,
@@ -45,6 +53,8 @@ final class Habit {
         self.name = name
         self.categoryRaw = category.rawValue
         self.strictnessRaw = strictness.rawValue
+        self.chainParentId = chainParentId
+        self.chainTargetGapMinutes = chainTargetGapMinutes
         self.scheduleTypeRaw = scheduleType.rawValue
         self.scheduleValue = scheduleValue
         self.targetStartMinutes = targetStartMinutes
