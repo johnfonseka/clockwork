@@ -56,11 +56,11 @@ separately, so this is UI/preset work, no migration.
 **Chained (CHN) scoring mode**
 - [ ] Additive migration: `'chained'` enum value + `chain_parent_id` + `chain_target_gap_minutes` (soft ref, **no** SQL FK)
 - [ ] Extend `SyncSchema` (PHP) to carry the two new columns
-- [ ] `ScoringEngine`: gap-based score (`100%` at/under target gap, flexible decay beyond)
-- [ ] `ScoringEngine`: Parent Grace Rule (parent missing/incomplete → child detaches to Show-Up baseline)
+- [x] `ScoringEngine`: gap-based score (`100%` at/under target gap, flexible decay beyond)
+- [x] `ScoringEngine`: Parent Grace Rule (parent missing/incomplete → child detaches to Show-Up baseline) + `.chained` enum case
 - [ ] `Habit` SwiftData model: `chainParentId`, `chainTargetGapMinutes`, `.chained` case
 - [ ] Momentum preset (Chained "Morning Workout" anchored to "Wake Up", 15-min gap)
-- [ ] Tests for gap scoring + Parent Grace
+- [x] Tests for gap scoring + Parent Grace (`swift test` — 33 passing)
 
 **Client backlog (from the master spec — lower priority)**
 - [ ] Siri voice logging ("mark … done in Clockwork")

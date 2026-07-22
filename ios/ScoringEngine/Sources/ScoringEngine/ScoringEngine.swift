@@ -30,6 +30,9 @@ public enum ScoringEngine {
             case .showUpBonus:
                 // Completion alone earns the baseline; no time means no time bonus.
                 return completed ? ScoringConstants.showUpBaselineCredit : 0
+            case .chained:
+                // No parent context here → Parent-Grace baseline (see scoreChained).
+                return detachedBaseline(completed: completed)
             case .strict, .flexible:
                 return 0
             }
@@ -86,7 +89,58 @@ public enum ScoringEngine {
             let timeBonus = ScoringConstants.showUpBaselineCredit
                 * max(0, (window - magnitude) / window)
             return ScoringConstants.showUpBaselineCredit + timeBonus
+
+        case .chained:
+            // A chain cannot be scored from clock variance alone — it needs the
+            // parent's finish time. Fall back to the Parent-Grace baseline; callers
+            // with parent context must use `scoreChained(...)` instead.
+            return detachedBaseline(completed: completed)
         }
+    }
+
+    // MARK: - Chained (CHN) scoring
+
+    /// Scores a Chained (CHN) habit against its parent (anchor) habit, ignoring the
+    /// clock entirely. See §1 "Chained Habits" of `clockwork-spec.md`.
+    ///
+    /// - Parameters:
+    ///   - parentFinishMinutes: The parent entry's finish time (actual start +
+    ///     actual duration) as minutes since midnight, or `nil` when the parent has
+    ///     no entry for the day / is not completed. `nil` triggers the **Parent
+    ///     Grace Rule**: the child detaches and falls back to the Show-Up baseline.
+    ///   - childStartMinutes: This habit's actual clock-in, or `nil` if never
+    ///     clocked in (the gap is then undefined; falls back to the baseline).
+    ///   - targetGapMinutes: The desired gap between the parent finishing and this
+    ///     habit starting.
+    ///   - completed: Completion flag, used only by the grace / no-time fallbacks.
+    /// - Returns: A score in the range 0...100.
+    public static func scoreChained(
+        parentFinishMinutes: Int?,
+        childStartMinutes: Int?,
+        targetGapMinutes: Int,
+        completed: Bool
+    ) -> Double {
+        // Parent Grace Rule: no usable parent → detach to the Show-Up baseline so a
+        // broken chain never unfairly penalises the child.
+        guard let parentFinishMinutes else {
+            return detachedBaseline(completed: completed)
+        }
+        // Parent present but the child never clocked in → gap undefined; treat like a
+        // completion baseline (mirrors the Show-Up "no time" branch).
+        guard let childStartMinutes else {
+            return detachedBaseline(completed: completed)
+        }
+
+        // Normalise across midnight (e.g. parent finishes 23:50, child starts 00:10).
+        let gap = signedVariance(
+            targetMinutes: parentFinishMinutes,
+            actualMinutes: childStartMinutes
+        )
+        // On or under the target gap = prompt = full credit (promptness is lenient,
+        // matching the early-clock-in asymmetry elsewhere).
+        if gap <= targetGapMinutes { return 100 }
+        let overshoot = Double(gap - targetGapMinutes)
+        return clampToScore(100 - overshoot * ScoringConstants.chainedDecayPerMinute)
     }
 
     // MARK: - Helpers
@@ -135,5 +189,11 @@ public enum ScoringEngine {
 
     private static func clampToScore(_ value: Double) -> Double {
         min(100, max(0, value))
+    }
+
+    /// The Parent-Grace fallback: a detached chained habit (or one lacking the data
+    /// to measure a gap) earns the Show-Up baseline on completion, otherwise 0.
+    private static func detachedBaseline(completed: Bool) -> Double {
+        completed ? ScoringConstants.showUpBaselineCredit : 0
     }
 }
