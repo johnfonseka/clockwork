@@ -44,6 +44,9 @@ composer.phar
 *.pem
 *.p8
 *.mobileprovision
+# Google OAuth client config downloads (values live in xcconfig / server env instead)
+client_*.apps.googleusercontent.com.plist
+GoogleService-Info.plist
 
 # ---- Docker ----
 backend/docker/data/
