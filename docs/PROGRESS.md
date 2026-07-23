@@ -96,8 +96,9 @@ Decisions: link accounts across providers by **verified email**; iOS uses **OIDC
 - [ ] **Close the prod auth bypass** — prod `api-clockwork` → `APP_ENV=production`; test tier stays `development` ⚠ *must land before real users*
 - [ ] Harden so a misconfigured `APP_ENV` can't fail open
 - [ ] Mobile app test/prod API base-URL switch (xcconfig/scheme or in-app dev toggle)
-- [ ] GitHub Actions CI (run `composer test`, `composer test:e2e`, `swift test` on push/PR)
-- [ ] GitHub Actions CD (build/deploy → test tier first, then promote to prod)
+- [x] GitHub Actions CI (`composer test` + `composer test:e2e` + `swift test` on PR/push) — `.github/workflows/ci-cd.yml`, actionlint clean ⚠ *runs green only once it executes on GitHub*
+- [~] GitHub Actions CD → test tier (rsync `backend/` over SSH + `docker compose up --build` + health check; triggers on merge to `main`) — **needs secrets filled** (`SSH_HOST/USER/KEY/DEPLOY_PATH`) and the workflow on `main` to arm the push trigger
+- [ ] CD promote to prod (`api-clockwork`) — later, gated separately from test
 
 ## Docs hygiene
 

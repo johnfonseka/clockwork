@@ -1,0 +1,121 @@
+name: CI / CD
+
+# CI runs on every PR and on pushes to main. CD (deploy to the test tier) runs
+# only after a push to main — i.e. once a PR is merged — and only if all the test
+# jobs pass. A manual run can also be triggered from the Actions tab.
+#
+# Required secrets (Settings → Secrets and variables → Actions; the deploy job
+# uses the `test` environment, so they can be scoped there):
+#   SSH_HOST     - server host/IP
+#   SSH_USER     - deploy user
+#   SSH_KEY      - that user's PRIVATE key (contents, PEM)
+#   DEPLOY_PATH  - dir on the server holding docker-compose.test-tier.yml
+#   SSH_PORT     - optional, defaults to 22
+# The server must already have Docker, the `web-proxy-network`, and a backend
+# `.env` (DB_*, APPLE_CLIENT_ID, GOOGLE_CLIENT_ID) — these are NOT synced.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Cancel superseded PR runs; never cancel a main/deploy run mid-flight.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend-unit:
+    name: Backend unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          tools: composer
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: composer test
+
+  backend-e2e:
+    name: Backend e2e (Docker)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+          tools: composer
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      # Spins up the ephemeral MariaDB + API stack (docker compose is preinstalled
+      # on ubuntu runners), runs the e2e suite over HTTP, then tears it down.
+      - run: composer test:e2e
+
+  scoring-engine:
+    name: ScoringEngine (Swift)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.0'
+      - run: swift test
+        working-directory: ios/ScoringEngine
+
+  deploy:
+    name: Deploy → test tier
+    needs: [backend-unit, backend-e2e, scoring-engine]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: test
+    # Serialise deploys so two quick merges can't race on the server.
+    concurrency:
+      group: deploy-test
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${SSH_PORT:-22}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+
+      - name: Sync backend to server
+        run: |
+          rsync -az --delete \
+            --exclude 'vendor/' \
+            --exclude '.env' \
+            --exclude '.phpunit.cache/' \
+            -e "ssh -i ~/.ssh/id_deploy -p ${SSH_PORT:-22}" \
+            backend/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+
+      - name: Rebuild and restart containers
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "cd '${{ secrets.DEPLOY_PATH }}' && docker compose -f docker-compose.test-tier.yml up -d --build --remove-orphans"
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+
+      - name: Health check
+        run: |
+          url="https://test-api-clockwork.shan4max.com/api/health"
+          for i in $(seq 1 20); do
+            if curl -fsS "$url" >/dev/null; then echo "healthy ✓"; exit 0; fi
+            echo "waiting for $url ($i/20)…"; sleep 6
+          done
+          echo "::error::deploy health check failed for $url"; exit 1
