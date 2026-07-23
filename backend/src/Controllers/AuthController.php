@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Clockwork\Controllers;
 
-use Clockwork\Auth\AppleTokenVerifier;
 use Clockwork\Auth\TokenVerificationException;
-use Clockwork\Config;
+use Clockwork\Auth\TokenVerifier;
 use Clockwork\Database;
 use Clockwork\Http\Json;
 use Clockwork\UserRepository;
 
 /**
- * POST /api/auth — verifies a Sign in with Apple identity token and resolves the
- * caller to an internal user record (creating it on first sign-in).
+ * POST /api/auth — verifies an Apple or Google identity token and resolves the
+ * caller to an internal user record (creating it on first sign-in, or linking the
+ * provider onto an existing account with the same verified email).
  *
  * The token may be supplied as `Authorization: Bearer <token>` or as an
  * `identity_token` field in the JSON body.
@@ -34,9 +34,8 @@ final class AuthController
             return;
         }
 
-        $verifier = new AppleTokenVerifier(Config::require('APPLE_CLIENT_ID'));
         try {
-            $claims = $verifier->verify($token);
+            $identity = (new TokenVerifier())->verify($token);
         } catch (TokenVerificationException $e) {
             Json::error($e->getMessage(), 401);
 
@@ -44,7 +43,12 @@ final class AuthController
         }
 
         $users = new UserRepository(Database::connection());
-        $user = $users->upsertByAppleId($claims['sub'], $claims['email']);
+        $user = $users->resolveIdentity(
+            $identity['provider'],
+            $identity['sub'],
+            $identity['email'],
+            $identity['email_verified'],
+        );
 
         Json::send(['user' => $user]);
     }

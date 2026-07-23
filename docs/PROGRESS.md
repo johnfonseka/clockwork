@@ -68,6 +68,27 @@ separately, so this is UI/preset work, no migration.
 - [ ] One-tap Reset-to-Target macro
 - [ ] Single-focus interactive home-screen widget
 
+## Google Sign-In (feature request, agreed 2026-07-23)
+
+Decisions: link accounts across providers by **verified email**; iOS uses **OIDC via
+`ASWebAuthenticationSession`** (no third-party SDK). See spec §2/§3.
+
+**G1 — Backend (done)**
+- [x] Multi-provider `users` schema (nullable `apple_user_id`, add `google_user_id`, unique `email`)
+- [x] `GoogleTokenVerifier` + shared `OidcJwtVerifier` base (Apple refactored onto it)
+- [x] Provider-agnostic `TokenVerifier` dispatcher (routes by `iss`)
+- [x] `UserRepository::resolveIdentity` — find by subject → link by verified email → create
+- [x] Wire into `AuthController` + `RequestAuthenticator`; add `GOOGLE_CLIENT_ID` config
+- [x] Tests: `composer test` 41 ✓ (Google verifier + dispatcher), `composer test:e2e` 14 ✓ (linking + unverified-email rejection)
+
+**G2 — iOS (blocked on your Google OAuth client ID)**
+- [ ] Auth-code + PKCE flow over `ASWebAuthenticationSession` → Google `id_token`
+- [ ] Register reversed-client-id URL scheme; feed `id_token` to the sync worker's Bearer header
+- [ ] Verify: builds; true end-to-end needs the real client ID + interactive login
+
+**G3 — Close the prod auth bypass** (also item under Infra/Ops below)
+- [ ] Land while in the auth code: prod → `APP_ENV=production`; harden against fail-open
+
 ## Infrastructure / Ops
 
 - [ ] Enable test URLs on the server (`test-clockwork`, `test-api-clockwork`)

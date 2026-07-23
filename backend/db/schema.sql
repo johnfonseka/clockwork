@@ -3,8 +3,12 @@
 
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  apple_user_id VARCHAR(255) UNIQUE NOT NULL,
-  email VARCHAR(255) NULL,
+  -- One row per person. A user may authenticate via Apple, Google, or both; the
+  -- provider subject columns are nullable and unique. `email` is the cross-provider
+  -- link key, so it is unique too and only a provider-verified email is ever stored.
+  apple_user_id VARCHAR(255) UNIQUE NULL,
+  google_user_id VARCHAR(255) UNIQUE NULL,
+  email VARCHAR(255) UNIQUE NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -63,7 +63,7 @@ When a calendar date is flagged as `is_paused` (due to a Trek, Hike, or Holiday)
 - **Client App:** Native Swift / SwiftUI (iOS 17+). Uses SwiftData for local-first offline execution.
 - **Backend REST API:** Lightweight, type-safe PHP 8.3+ running stateless inside a home server Docker container.
 - **Database Engine:** MariaDB storing relational sync states.
-- **Authentication:** Sign in with Apple (SIWA) passing verified JWT tokens to the PHP server layer.
+- **Authentication:** Sign in with Apple (SIWA) and Google Sign-In, both passing verified OpenID Connect JWTs to the PHP server layer. The backend routes a token to the right verifier by its `iss` claim; accounts are linked across providers by **verified email** (one person, one account). Only a provider-verified email is ever stored or used to link.
 - **Version Control:** Managed globally via Git.
 
 ### Visual Style Guide (Strict Minimalist Terminal)
@@ -78,8 +78,12 @@ When a calendar date is flagged as `is_paused` (due to a Trek, Hike, or Holiday)
 ```sql
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  apple_user_id VARCHAR(255) UNIQUE NOT NULL,
-  email VARCHAR(255) NULL,
+  -- Multi-provider identity. Provider subjects are nullable + unique; a user may
+  -- have Apple, Google, or both. `email` is the cross-provider link key (unique),
+  -- and only a provider-verified email is ever stored.
+  apple_user_id VARCHAR(255) UNIQUE NULL,
+  google_user_id VARCHAR(255) UNIQUE NULL,
+  email VARCHAR(255) UNIQUE NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

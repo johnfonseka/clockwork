@@ -72,15 +72,27 @@ run there unchanged.
 | Method | Path          | Description |
 |--------|---------------|-------------|
 | `GET`  | `/api/health` | Liveness + DB connectivity. `200` if DB reachable, else `503`. |
-| `POST` | `/api/auth`   | Verify a Sign in with Apple identity token, upsert the user, return the record. |
+| `POST` | `/api/auth`   | Verify an Apple **or** Google identity token, resolve/link the user, return the record. |
 | `POST` | `/api/sync`   | Last-write-wins delta sync (spec §5). |
 
 ### Authentication
 
 Both `/api/auth` and `/api/sync` authenticate the caller. `/api/auth` accepts the
 token as `Authorization: Bearer <token>` or a JSON body
-`{ "identity_token": "<token>" }`; it verifies the JWT signature against Apple's
-public keys and checks `iss` and `aud` (`aud` must equal `APPLE_CLIENT_ID`).
+`{ "identity_token": "<token>" }`. A **provider-agnostic dispatcher**
+(`Auth/TokenVerifier`) routes the token by its `iss` claim to the right verifier:
+
+- **Apple** (`AppleTokenVerifier`) — `aud` must equal `APPLE_CLIENT_ID`.
+- **Google** (`GoogleTokenVerifier`) — `aud` must equal `GOOGLE_CLIENT_ID`; the
+  email is trusted only when `email_verified` is true.
+
+Both verify the JWT signature against the provider's public JWKS (cached on disk)
+and check `iss`/`aud`/`sub`. The resolved identity is passed to
+`UserRepository::resolveIdentity`, which finds the user by provider subject, else
+**links** the provider onto an existing account with the same *verified* email,
+else creates a new user. Only a provider-verified email is ever stored (it is the
+unique cross-provider link key), so an unverified email can never hijack an
+account.
 
 **Dev bypass:** when `APP_ENV=development`, requests may send
 `X-Dev-User: <any-id>` instead of a real Apple token. The id is treated as an

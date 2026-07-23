@@ -73,7 +73,7 @@ abstract class E2ETestCase extends TestCase
         return ['status' => $status, 'json' => is_array($json) ? $json : null, 'raw' => $raw];
     }
 
-    private function db(): PDO
+    protected function db(): PDO
     {
         if (self::$db === null) {
             $host = getenv('DB_TEST_HOST') ?: '127.0.0.1';

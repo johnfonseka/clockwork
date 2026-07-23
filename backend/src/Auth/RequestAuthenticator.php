@@ -11,11 +11,12 @@ use PDO;
 /**
  * Resolves the calling user for a request.
  *
- * Normally this verifies a Sign in with Apple identity token
- * (`Authorization: Bearer <token>`). When `APP_ENV=development`, an
- * `X-Dev-User: <id>` header bypasses Apple verification and resolves/creates a
+ * Normally this verifies an Apple or Google identity token
+ * (`Authorization: Bearer <token>`) via {@see TokenVerifier}, then resolves it to
+ * a user (linking providers by verified email). When `APP_ENV=development`, an
+ * `X-Dev-User: <id>` header bypasses token verification and resolves/creates a
  * user directly — this lets the backend be exercised end-to-end (and the
- * frontend developed) without a live Apple token.
+ * frontend developed) without a live provider token.
  */
 final class RequestAuthenticator
 {
@@ -42,10 +43,14 @@ final class RequestAuthenticator
             throw new TokenVerificationException('Missing bearer token');
         }
 
-        $verifier = new AppleTokenVerifier(Config::require('APPLE_CLIENT_ID'));
-        $claims = $verifier->verify($token);
+        $identity = (new TokenVerifier())->verify($token);
 
-        return $users->upsertByAppleId($claims['sub'], $claims['email'])['id'];
+        return $users->resolveIdentity(
+            $identity['provider'],
+            $identity['sub'],
+            $identity['email'],
+            $identity['email_verified'],
+        )['id'];
     }
 
     private function bearerToken(): ?string
